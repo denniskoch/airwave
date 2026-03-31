@@ -1,0 +1,38 @@
+{
+  "iptv": {
+    "server": "http://YOUR_IPTV_SERVER:PORT",
+    "m3uPath": "/iptv/channels.m3u",
+    "xmltvPath": "/iptv/xmltv.xml"
+  },
+  "rssFeeds": [
+    {
+      "name": "Hacker News",
+      "url": "https://news.ycombinator.com/rss",
+      "color": "#ff6600"
+    },
+    {
+      "name": "Bleeping Computer",
+      "url": "https://www.bleepingcomputer.com/feed/",
+      "color": "#cc2200"
+    },
+    {
+      "name": "Krebs",
+      "url": "https://krebsonsecurity.com/feed/",
+      "color": "#1a6ebd"
+    },
+    {
+      "name": "Dark Reading",
+      "url": "https://www.darkreading.com/rss/all.xml",
+      "color": "#8b0000"
+    }
+  ],
+  "timezones": [
+    { "label": "UTC", "tz": "UTC" },
+    { "label": "London", "tz": "Europe/London" }
+  ],
+  "guide": {
+    "pastMinutes": 30,
+    "futureMinutes": 120,
+    "pxPerMinute": 3
+  }
+}
