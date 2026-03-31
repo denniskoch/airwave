@@ -1,0 +1,9 @@
+services:
+  techtv:
+    build: .
+    container_name: techtv
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config.json:/app/config.json:ro
+    restart: unless-stopped

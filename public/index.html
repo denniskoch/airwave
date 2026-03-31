@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TechTV</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ── Header bar ── -->
+  <header class="app-header">
+    <div class="app-logo">
+      <div class="logo-dot"></div>
+      <span class="logo-text">tech<strong>TV</strong></span>
+    </div>
+    <div class="header-channel" id="headerChannel"></div>
+    <div class="header-clocks" id="headerClocks"></div>
+  </header>
+
+  <!-- ── Body ── -->
+  <div class="app-body">
+
+    <!-- Upper row: video column + news panel -->
+    <div class="upper-row">
+
+      <!-- Left: video + now-playing bar -->
+      <div class="left-col">
+        <div class="video-area">
+          <video id="videoPlayer" playsinline autoplay muted></video>
+          <div class="ch-bug" id="chBug"></div>
+          <div class="video-overlay" id="videoOverlay">
+            <div class="spinner"></div>
+          </div>
+        </div>
+
+        <div class="now-bar" id="nowBar">
+          <img class="nb-art" id="nbArt" src="" alt="" onerror="this.style.display='none'">
+          <div class="nb-body">
+            <div class="nb-top">
+              <span class="nb-title" id="nbTitle">Loading…</span>
+              <span class="nb-tags" id="nbTags"></span>
+            </div>
+            <div class="nb-progress-row">
+              <span class="nb-t" id="nbStart"></span>
+              <div class="nb-bar"><div class="nb-fill" id="nbFill"></div></div>
+              <span class="nb-t" id="nbEnd"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: credits-style news scroller -->
+      <div class="news-panel">
+        <div class="news-panel-header">
+          <span class="news-panel-label">NEWS</span>
+          <div class="news-badges" id="newsBadges"></div>
+        </div>
+        <div class="news-viewport">
+          <div class="news-track" id="newsTrack"></div>
+        </div>
+      </div>
+
+    </div><!-- /upper-row -->
+
+    <!-- Mini EPG: 3 channels, full width -->
+    <div class="mini-epg-bar" id="miniEpgBar"></div>
+
+  </div><!-- /app-body -->
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
