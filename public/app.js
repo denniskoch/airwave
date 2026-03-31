@@ -479,13 +479,15 @@ function initVolume() {
 
   muteBtn.addEventListener('click', () => {
     video.muted = !video.muted;
-    slider.value = video.muted ? 0 : video.volume * 100;
+    slider.value = video.muted ? 0 : 100;
+    if (!video.muted) video.volume = 1;
     updateIcon();
   });
 
-  // Start unmuted at full volume
-  video.muted  = false;
-  video.volume = 1;
+  // Start muted — browsers block autoplay with audio
+  video.muted   = true;
+  video.volume  = 1;
+  slider.value  = 0;
   lucide.createIcons();
   updateIcon();
 }

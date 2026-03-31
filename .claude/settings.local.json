@@ -3,7 +3,8 @@
     "allow": [
       "WebFetch(domain:10.60.200.83)",
       "Bash(curl -s \"http://10.60.200.83:8409/iptv/channels.m3u\")",
-      "Bash(curl -s \"http://10.60.200.83:8409/iptv/xmltv.xml\")"
+      "Bash(curl -s \"http://10.60.200.83:8409/iptv/xmltv.xml\")",
+      "mcp__Claude_Preview__preview_start"
     ]
   }
 }
