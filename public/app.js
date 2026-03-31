@@ -26,6 +26,7 @@ async function init() {
     state.channels = parseM3U(m3uText);
     state.programmes = parseXMLTV(xmltvText);
 
+    initVolume();
     if (state.channels.length) selectChannel(state.channels[0]);
 
     loadAllRSS();
@@ -118,7 +119,7 @@ function selectChannel(ch) {
   bug.classList.add('visible');
   setTimeout(() => bug.classList.remove('visible'), 3000);
 
-  showLoading(true);
+  startStatic();
   playStream(ch.url);
 
   updateNowBar(ch);
@@ -136,13 +137,13 @@ function playStream(url) {
   if (Hls.isSupported()) {
     const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
     state.hls = hls;
-    hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); showLoading(false); });
+    hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); showLoading(false); stopStatic(); });
     hls.on(Hls.Events.ERROR, (_, data) => { if (data.fatal) showLoading(true); });
     hls.loadSource(url);
     hls.attachMedia(video);
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = url;
-    video.addEventListener('loadeddata', () => showLoading(false), { once: true });
+    video.addEventListener('loadeddata', () => { showLoading(false); stopStatic(); }, { once: true });
     video.play().catch(() => {});
   }
 }
@@ -341,10 +342,10 @@ function startClocks() {
 function tick() {
   const now = new Date();
   const localEl = document.getElementById('clock-local');
-  if (localEl) localEl.textContent = now.toLocaleTimeString('en-GB', { hour12: false });
+  if (localEl) localEl.textContent = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
   (state.config?.timezones ?? []).forEach(({ tz }) => {
     const el = document.getElementById(`clock-${tz.replace(/\//g, '-')}`);
-    if (el) el.textContent = now.toLocaleTimeString('en-GB', { timeZone: tz, hour12: false });
+    if (el) el.textContent = now.toLocaleTimeString('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
   });
 }
 
@@ -415,12 +416,78 @@ async function refreshEPGData() {
 
 // ── Utilities ──────────────────────────────────────────────────────────────
 function fmtTime(ts) {
-  return new Date(ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+  return new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 function esc(str) {
   return String(str)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ── Channel change static effect ───────────────────────────────────────────
+let _staticRaf = null;
+
+function startStatic() {
+  const canvas = document.getElementById('staticCanvas');
+  const ctx    = canvas.getContext('2d');
+  const W = 160, H = 90;
+  canvas.width  = W;
+  canvas.height = H;
+  canvas.style.transition = 'none';
+  canvas.style.opacity    = '1';
+  const imgData = ctx.createImageData(W, H);
+  function tick() {
+    const d = imgData.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const v    = (Math.random() * 255) | 0;
+      const tint = Math.random() > 0.92 ? (Math.random() * 80 | 0) : 0;
+      d[i] = v + tint; d[i+1] = v; d[i+2] = v + tint; d[i+3] = 255;
+    }
+    ctx.putImageData(imgData, 0, 0);
+    _staticRaf = requestAnimationFrame(tick);
+  }
+  _staticRaf = requestAnimationFrame(tick);
+}
+
+function stopStatic() {
+  if (_staticRaf) { cancelAnimationFrame(_staticRaf); _staticRaf = null; }
+  const canvas = document.getElementById('staticCanvas');
+  canvas.style.transition = 'opacity 0.3s ease-out';
+  canvas.style.opacity    = '0';
+}
+
+// ── Volume & mute ──────────────────────────────────────────────────────────
+function initVolume() {
+  const video   = document.getElementById('videoPlayer');
+  const slider  = document.getElementById('volSlider');
+  const muteBtn = document.getElementById('muteBtn');
+
+  function updateIcon() {
+    const icon = document.getElementById('volIcon');
+    const name = (video.muted || video.volume === 0) ? 'volume-x'
+               : video.volume < 0.5               ? 'volume-1'
+               :                                    'volume-2';
+    icon.setAttribute('data-lucide', name);
+    lucide.createIcons();
+  }
+
+  slider.addEventListener('input', () => {
+    video.volume = slider.value / 100;
+    video.muted  = slider.value == 0;
+    updateIcon();
+  });
+
+  muteBtn.addEventListener('click', () => {
+    video.muted = !video.muted;
+    slider.value = video.muted ? 0 : video.volume * 100;
+    updateIcon();
+  });
+
+  // Start unmuted at full volume
+  video.muted  = false;
+  video.volume = 1;
+  lucide.createIcons();
+  updateIcon();
 }
 
 // ── Keyboard navigation ────────────────────────────────────────────────────
@@ -431,6 +498,8 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     const prev = state.channels[(idx - 1 + state.channels.length) % state.channels.length];
     selectChannel(prev);
+  } else if (e.key === 'm' || e.key === 'M') {
+    document.getElementById('muteBtn').click();
   } else if (e.key === 'ArrowDown') {
     e.preventDefault();
     const next = state.channels[(idx + 1) % state.channels.length];

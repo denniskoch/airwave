@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TechTV</title>
+  <title>AirWAVES</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,7 +12,7 @@
   <header class="app-header">
     <div class="app-logo">
       <div class="logo-dot"></div>
-      <span class="logo-text">tech<strong>TV</strong></span>
+      <span class="logo-text">Air<strong>WAVES</strong></span>
     </div>
     <div class="header-channel" id="headerChannel"></div>
     <div class="header-clocks" id="headerClocks"></div>
@@ -32,6 +32,12 @@
           <div class="video-overlay" id="videoOverlay">
             <div class="spinner"></div>
           </div>
+          <canvas id="staticCanvas" class="static-canvas"></canvas>
+        </div>
+
+        <div class="volume-bar">
+          <button class="vol-btn" id="muteBtn" title="Mute (M)"><i id="volIcon" data-lucide="volume-2"></i></button>
+          <input class="vol-slider" id="volSlider" type="range" min="0" max="100" value="100">
         </div>
 
         <div class="now-bar" id="nowBar">
@@ -68,6 +74,7 @@
 
   </div><!-- /app-body -->
 
+  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
   <script src="app.js"></script>
 </body>

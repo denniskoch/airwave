@@ -16,10 +16,10 @@
   --text-muted:#4a5568;
   --header-h:  54px;
   --now-bar-h: 64px;
-  --mini-epg-h:170px;
-  --news-w:    320px;
+  --mini-epg-h:210px;
+  --news-w:    420px;
   --ch-col-w:  130px;
-  --row-h:     46px;
+  --row-h:     56px;
   --font:      -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
   --mono:      ui-monospace, 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
 }
@@ -67,9 +67,9 @@ html, body {
 }
 .header-channel .ch-num-badge {
   background: var(--accent); color: #000; font-weight: 700;
-  font-size: 11px; padding: 2px 6px; border-radius: 3px; margin-right: 6px;
+  font-size: 13px; padding: 2px 7px; border-radius: 3px; margin-right: 8px;
 }
-.header-channel .ch-title { color: var(--text); font-weight: 500; }
+.header-channel .ch-title { color: var(--text); font-weight: 500; font-size: 14px; }
 
 .header-clocks { display: flex; gap: 20px; flex-shrink: 0; }
 
@@ -135,12 +135,58 @@ html, body {
 }
 .video-overlay.visible { opacity: 1; }
 
+.static-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 6;
+  image-rendering: pixelated;
+}
+
 .spinner {
   width: 36px; height: 36px;
   border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--accent);
   border-radius: 50%; animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Volume bar ── */
+.volume-bar {
+  height: 36px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+}
+
+.vol-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+  display: flex;
+  align-items: center;
+  color: var(--text-dim);
+}
+.vol-btn:hover { opacity: 1; color: var(--text); }
+.vol-btn svg { width: 18px; height: 18px; stroke-width: 1.75; }
+
+.vol-slider {
+  flex: 1;
+  max-width: 200px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  height: 4px;
+}
 
 /* ── Now-playing bar ── */
 .now-bar {
@@ -293,21 +339,21 @@ html, body {
 }
 
 .news-item {
-  padding: 14px 16px 14px 14px;
+  padding: 18px 16px 18px 14px;
   border-bottom: 1px solid var(--border);
 }
 
 .news-item-source {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
 }
 
 .news-item-title {
   display: block;
-  font-size: 14px;
+  font-size: 18px;
   line-height: 1.45;
   color: var(--text-dim);
   text-decoration: none;
@@ -322,6 +368,7 @@ html, body {
   border-top: 1px solid var(--border);
   overflow: hidden;
   background: var(--bg);
+  position: relative;
 }
 
 .mini-epg-table {
@@ -399,8 +446,8 @@ html, body {
   padding: 0 10px;
   height: 100%;
 }
-.ch-num { font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--accent); min-width: 18px; text-align: right; }
-.ch-name { font-size: 12px; font-weight: 500; color: var(--text-dim); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ch-num { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent); min-width: 20px; text-align: right; }
+.ch-name { font-size: 14px; font-weight: 500; color: var(--text-dim); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .mini-ch-row.active .ch-name { color: var(--text); }
 
 /* programme cells */
@@ -431,9 +478,9 @@ html, body {
 .mini-prog.past   { background: #111118; opacity: 0.5; }
 .mini-prog.future { background: var(--surface3); }
 
-.mini-prog-title { font-size: 11px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini-prog-title { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mini-prog.past .mini-prog-title { color: var(--text-dim); }
-.mini-prog-time  { font-family: var(--mono); font-size: 9px; color: var(--text-muted); white-space: nowrap; }
+.mini-prog-time  { font-family: var(--mono); font-size: 11px; color: var(--text-muted); white-space: nowrap; }
 
 .mini-no-data {
   position: absolute; top: 3px; height: calc(var(--row-h) - 6px);
