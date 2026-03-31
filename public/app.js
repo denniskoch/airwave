@@ -191,15 +191,15 @@ function updateNowBar(ch) {
 }
 
 // ── Mini EPG ───────────────────────────────────────────────────────────────
-const MINI_PAST_MINS   = 30;
-const MINI_FUTURE_MINS = 90;
-const MINI_WIN_MINS    = MINI_PAST_MINS + MINI_FUTURE_MINS; // 120
+const MINI_PAST_MINS   = () => state.config?.guide?.pastMinutes   ?? 30;
+const MINI_FUTURE_MINS = () => state.config?.guide?.futureMinutes ?? 90;
+const MINI_WIN_MINS    = () => MINI_PAST_MINS() + MINI_FUTURE_MINS();
 
 function renderMiniEPG() {
   const container = document.getElementById('miniEpgBar');
   const now       = Date.now();
-  const wStart    = now - MINI_PAST_MINS * 60000;
-  const wEnd      = now + MINI_FUTURE_MINS * 60000;
+  const wStart    = now - MINI_PAST_MINS() * 60000;
+  const wEnd      = now + MINI_FUTURE_MINS() * 60000;
 
   // Pick 3 channels: current ± neighbours
   const idx = state.channels.findIndex(c => c.id === state.currentChannelId);
@@ -211,7 +211,7 @@ function renderMiniEPG() {
   const chColW    = 130; // matches --ch-col-w
   const totalW    = container.clientWidth || (window.innerWidth - 320); // fallback
   const timelineW = totalW - chColW;
-  const ppm       = timelineW / MINI_WIN_MINS;
+  const ppm       = timelineW / MINI_WIN_MINS();
 
   // Build table
   const table = document.createElement('table');
@@ -305,7 +305,7 @@ function renderMiniEPG() {
   // Now line
   const nowLine = document.createElement('div');
   nowLine.className = 'mini-now-line';
-  nowLine.style.left = (chColW + MINI_PAST_MINS * ppm) + 'px';
+  nowLine.style.left = (chColW + MINI_PAST_MINS() * ppm) + 'px';
 
   container.innerHTML = '';
   container.appendChild(table);
