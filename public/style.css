@@ -505,3 +505,164 @@ html, body {
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--surface3); }
+
+/* ── GUIDE button (header) ── */
+.epg-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 3px 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  margin-left: auto;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.epg-btn:hover { background: var(--surface3); color: var(--text); border-color: var(--accent); }
+.epg-btn svg { width: 13px; height: 13px; }
+
+/* ── Full EPG overlay ── */
+.epg-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+.epg-overlay[hidden] { display: none; }
+
+.epg-overlay-header {
+  height: var(--header-h);
+  flex-shrink: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+}
+.epg-overlay-title {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.epg-overlay-title svg { width: 16px; height: 16px; color: var(--accent); }
+
+.epg-close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  transition: background 0.15s, color 0.15s;
+}
+.epg-close-btn:hover { background: var(--surface2); color: var(--text); }
+.epg-close-btn svg { width: 18px; height: 18px; }
+
+/* ── EPG scroll wrapper (single container for both axes) ── */
+.epg-scroll-wrap {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  position: relative;
+}
+
+/* ── Full EPG table ── */
+.full-epg-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+/* Sticky time header */
+.full-epg-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+/* Corner cell — sticky on both axes, highest z-index */
+.full-epg-table thead .epg-ch-col {
+  left: 0;
+  z-index: 6;
+}
+
+.full-time-cell {
+  height: 28px;
+  background: var(--surface);
+  position: relative;
+}
+
+/* Sticky channel column */
+.full-epg-table tbody .epg-ch-col {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--surface);
+  width: var(--ch-col-w);
+  min-width: var(--ch-col-w);
+  max-width: var(--ch-col-w);
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.full-ch-row {
+  height: var(--row-h);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.full-ch-row:hover .epg-ch-col { background: var(--surface2); }
+.full-ch-row.active .epg-ch-col { background: var(--surface2); }
+.full-ch-row.active .epg-ch-col::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--accent);
+}
+
+/* Programme cells */
+.full-progs-cell {
+  position: relative;
+  height: var(--row-h);
+  padding: 0;
+  overflow: visible;
+}
+
+/* Now-line — absolute inside .epg-scroll-wrap */
+.full-now-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--red);
+  z-index: 3;
+  pointer-events: none;
+  box-shadow: 0 0 6px var(--red);
+}
+.full-now-line::before {
+  content: '';
+  position: absolute;
+  top: 28px; left: -4px;
+  width: 10px; height: 10px;
+  background: var(--red);
+  border-radius: 50%;
+}

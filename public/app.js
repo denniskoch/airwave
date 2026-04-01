@@ -30,6 +30,9 @@ async function init() {
     initVolume();
     if (state.channels.length) selectChannel(state.channels[0]);
 
+    document.getElementById('epgBtn').addEventListener('click', openFullEPG);
+    document.getElementById('epgCloseBtn').addEventListener('click', closeFullEPG);
+
     loadAllRSS();
     setInterval(refreshEPGData, 5 * 60 * 1000);
     setInterval(loadAllRSS,    5 * 60 * 1000);
@@ -190,6 +193,129 @@ function updateNowBar(ch) {
     startEl.textContent = '';
     endEl.textContent   = '';
   }
+}
+
+// ── Full EPG overlay ───────────────────────────────────────────────────────
+function renderFullEPG() {
+  const container = document.getElementById('epgScrollWrap');
+  const now       = Date.now();
+  const wStart    = now - MINI_PAST_MINS() * 60000;
+  const wEnd      = now + MINI_FUTURE_MINS() * 60000;
+  const chColW    = 130; // matches --ch-col-w
+  const winMins   = MINI_PAST_MINS() + MINI_FUTURE_MINS();
+  // Fluid ppm: fill the container width exactly, like the mini EPG
+  const ppm       = Math.max(4, (container.clientWidth - chColW) / winMins);
+  const timelineW = winMins * ppm;
+
+  const table = document.createElement('table');
+  table.className = 'full-epg-table';
+
+  // Time header
+  const thead   = document.createElement('thead');
+  const timeRow = document.createElement('tr');
+
+  const thCorner = document.createElement('th');
+  thCorner.className = 'epg-ch-col';
+  thCorner.style.cssText = `width:${chColW}px;min-width:${chColW}px;`;
+  timeRow.appendChild(thCorner);
+
+  const thTime = document.createElement('th');
+  thTime.className = 'full-time-cell';
+  thTime.style.cssText = `width:${timelineW}px;min-width:${timelineW}px;`;
+
+  const firstTick = Math.ceil(wStart / (30 * 60000)) * 30 * 60000;
+  for (let t = firstTick; t <= wEnd; t += 30 * 60000) {
+    const tick = document.createElement('div');
+    tick.className = 'mini-tick';
+    tick.style.left = ((t - wStart) / 60000 * ppm) + 'px';
+    tick.innerHTML = `<span class="mini-tick-label">${fmtTime(t)}</span>`;
+    thTime.appendChild(tick);
+  }
+  timeRow.appendChild(thTime);
+  thead.appendChild(timeRow);
+  table.appendChild(thead);
+
+  // Channel rows
+  const tbody = document.createElement('tbody');
+  state.channels.forEach(ch => {
+    const tr = document.createElement('tr');
+    tr.className = 'full-ch-row';
+    if (ch.id === state.currentChannelId) tr.classList.add('active');
+    tr.addEventListener('click', () => { selectChannel(ch); closeFullEPG(); });
+
+    const tdLabel = document.createElement('td');
+    tdLabel.className = 'epg-ch-col';
+    tdLabel.innerHTML =
+      `<div class="mini-ch-inner">` +
+      `<span class="ch-num">${ch.number}</span>` +
+      `<span class="ch-name">${esc(ch.name)}</span>` +
+      `</div>`;
+    tr.appendChild(tdLabel);
+
+    const tdProgs = document.createElement('td');
+    tdProgs.className = 'full-progs-cell';
+    tdProgs.style.cssText = `width:${timelineW}px;min-width:${timelineW}px;`;
+
+    const progs = (state.programmes[ch.id] ?? []).filter(p => p.stop > wStart && p.start < wEnd);
+
+    if (!progs.length) {
+      const nd = document.createElement('div');
+      nd.className = 'mini-no-data';
+      nd.style.cssText = `left:2px;width:${timelineW - 4}px;`;
+      nd.innerHTML = '<span>No EPG data</span>';
+      tdProgs.appendChild(nd);
+    } else {
+      progs.forEach(prog => {
+        const cs      = Math.max(prog.start.getTime(), wStart);
+        const ce      = Math.min(prog.stop.getTime(),  wEnd);
+        const leftPx  = (cs - wStart) / 60000 * ppm;
+        const widthPx = Math.max(2, (ce - cs) / 60000 * ppm - 2);
+
+        const block = document.createElement('div');
+        block.className = 'mini-prog';
+        if (prog.start <= now && prog.stop > now) block.classList.add('now');
+        else if (prog.stop <= now)                block.classList.add('past');
+        else                                      block.classList.add('future');
+
+        block.style.cssText = `left:${leftPx}px;width:${widthPx}px;`;
+        block.title = `${prog.title} · ${fmtTime(prog.start)}–${fmtTime(prog.stop)}`;
+        block.innerHTML =
+          `<div class="mini-prog-title">${esc(prog.title)}</div>` +
+          (widthPx > 80 ? `<div class="mini-prog-time">${fmtTime(prog.start)}–${fmtTime(prog.stop)}</div>` : '');
+
+        block.addEventListener('click', e => { e.stopPropagation(); selectChannel(ch); closeFullEPG(); });
+        tdProgs.appendChild(block);
+      });
+    }
+
+    tr.appendChild(tdProgs);
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+
+  // Now-line
+  const nowLine = document.createElement('div');
+  nowLine.className = 'full-now-line';
+  nowLine.style.left = (chColW + MINI_PAST_MINS() * ppm) + 'px';
+
+  container.innerHTML = '';
+  container.appendChild(table);
+  container.appendChild(nowLine);
+}
+
+function openFullEPG() {
+  document.getElementById('epgOverlay').removeAttribute('hidden');
+  lucide.createIcons();
+  renderFullEPG(); // called after unhide so container.clientWidth is correct
+  requestAnimationFrame(() => {
+    const wrap = document.getElementById('epgScrollWrap');
+    const activeRow = wrap.querySelector('.full-ch-row.active');
+    if (activeRow) wrap.scrollTop = Math.max(0, activeRow.offsetTop - wrap.clientHeight / 2);
+  });
+}
+
+function closeFullEPG() {
+  document.getElementById('epgOverlay').setAttribute('hidden', '');
 }
 
 // ── Mini EPG ───────────────────────────────────────────────────────────────
@@ -497,17 +623,24 @@ function initVolume() {
 // ── Keyboard navigation ────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (!state.channels.length) return;
+  const epgOpen = !document.getElementById('epgOverlay').hasAttribute('hidden');
   const idx = state.channels.findIndex(c => c.id === state.currentChannelId);
   if (e.key === 'ArrowUp') {
+    if (epgOpen) return;
     e.preventDefault();
     const prev = state.channels[(idx - 1 + state.channels.length) % state.channels.length];
     selectChannel(prev);
-  } else if (e.key === 'm' || e.key === 'M') {
-    document.getElementById('muteBtn').click();
   } else if (e.key === 'ArrowDown') {
+    if (epgOpen) return;
     e.preventDefault();
     const next = state.channels[(idx + 1) % state.channels.length];
     selectChannel(next);
+  } else if (e.key === 'm' || e.key === 'M') {
+    document.getElementById('muteBtn').click();
+  } else if (e.key === 'g' || e.key === 'G') {
+    epgOpen ? closeFullEPG() : openFullEPG();
+  } else if (e.key === 'Escape') {
+    closeFullEPG();
   }
 });
 

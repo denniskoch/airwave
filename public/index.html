@@ -38,6 +38,10 @@
         <div class="volume-bar">
           <button class="vol-btn" id="muteBtn" title="Mute (M)"><i id="volIcon" data-lucide="volume-2"></i></button>
           <input class="vol-slider" id="volSlider" type="range" min="0" max="100" value="100">
+          <button class="epg-btn" id="epgBtn" title="Full Guide (G)">
+            <i data-lucide="layout-list"></i>
+            <span>GUIDE</span>
+          </button>
         </div>
 
         <div class="now-bar" id="nowBar">
@@ -73,6 +77,19 @@
     <div class="mini-epg-bar" id="miniEpgBar"></div>
 
   </div><!-- /app-body -->
+
+  <div class="epg-overlay" id="epgOverlay" hidden>
+    <div class="epg-overlay-header">
+      <span class="epg-overlay-title">
+        <i data-lucide="layout-list"></i>
+        PROGRAM GUIDE
+      </span>
+      <button class="epg-close-btn" id="epgCloseBtn" title="Close (Esc)">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <div class="epg-scroll-wrap" id="epgScrollWrap"></div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
