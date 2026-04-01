@@ -8,6 +8,7 @@ const state = {
   programmes: {},      // channelId → sorted programme array
   currentChannelId: null,
   hls: null,
+  streamTimer: null,
   progressTimer: null,
 };
 
@@ -120,7 +121,8 @@ function selectChannel(ch) {
   setTimeout(() => bug.classList.remove('visible'), 3000);
 
   startStatic();
-  playStream(ch.url);
+  clearTimeout(state.streamTimer);
+  state.streamTimer = setTimeout(() => playStream(ch.url), 800);
 
   updateNowBar(ch);
   clearInterval(state.progressTimer);
