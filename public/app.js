@@ -623,10 +623,16 @@ function initVolume() {
     updateIcon();
   });
 
+  let premuteVolume = 100;
   muteBtn.addEventListener('click', () => {
+    if (!video.muted) premuteVolume = slider.value > 0 ? +slider.value : premuteVolume;
     video.muted = !video.muted;
-    slider.value = video.muted ? 0 : 100;
-    if (!video.muted) video.volume = 1;
+    if (video.muted) {
+      slider.value = 0;
+    } else {
+      slider.value = premuteVolume;
+      video.volume = premuteVolume / 100;
+    }
     updateIcon();
   });
 
