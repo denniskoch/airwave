@@ -328,7 +328,6 @@ html, body {
 .news-viewport::after  { bottom: 0; background: linear-gradient(to top, var(--bg), transparent); }
 
 .news-track {
-  padding-top: 100%; /* start below fold */
   animation: credits-up var(--credits-duration, 180s) linear infinite;
   will-change: transform;
 }
