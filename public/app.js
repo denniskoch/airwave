@@ -32,6 +32,14 @@ async function init() {
 
     document.getElementById('epgBtn').addEventListener('click', openFullEPG);
     document.getElementById('epgCloseBtn').addEventListener('click', closeFullEPG);
+    document.getElementById('chUpBtn').addEventListener('click', () => {
+      const idx = state.channels.findIndex(c => c.id === state.currentChannelId);
+      selectChannel(state.channels[(idx - 1 + state.channels.length) % state.channels.length]);
+    });
+    document.getElementById('chDnBtn').addEventListener('click', () => {
+      const idx = state.channels.findIndex(c => c.id === state.currentChannelId);
+      selectChannel(state.channels[(idx + 1) % state.channels.length]);
+    });
 
     loadAllRSS();
     setInterval(refreshEPGData,    5 * 60 * 1000);

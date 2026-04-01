@@ -507,6 +507,26 @@ html, body {
 ::-webkit-scrollbar-thumb:hover { background: var(--surface3); }
 
 /* ── GUIDE button (header) ── */
+.ch-nav-btns {
+  display: flex;
+  flex-direction: row;
+  margin-left: auto;
+  gap: 2px;
+}
+.ch-nav-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 4px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.ch-nav-btn:hover { color: var(--text); }
+.ch-nav-btn svg { width: 14px; height: 14px; stroke-width: 2.5; }
+
 .epg-btn {
   background: var(--surface2);
   border: 1px solid var(--border);
@@ -522,7 +542,6 @@ html, body {
   letter-spacing: 1.5px;
   text-transform: uppercase;
   flex-shrink: 0;
-  margin-left: auto;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .epg-btn:hover { background: var(--surface3); color: var(--text); border-color: var(--accent); }
