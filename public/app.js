@@ -34,8 +34,9 @@ async function init() {
     document.getElementById('epgCloseBtn').addEventListener('click', closeFullEPG);
 
     loadAllRSS();
-    setInterval(refreshEPGData, 5 * 60 * 1000);
-    setInterval(loadAllRSS,    5 * 60 * 1000);
+    setInterval(refreshEPGData,    5 * 60 * 1000);
+    setInterval(refreshChannels,   5 * 60 * 1000);
+    setInterval(loadAllRSS,        5 * 60 * 1000);
   } catch (e) {
     console.error('Init failed', e);
   }
@@ -530,6 +531,15 @@ function renderNewsCredits(items) {
 }
 
 // ── Data refresh ───────────────────────────────────────────────────────────
+async function refreshChannels() {
+  try {
+    const text = await fetch('/api/channels').then(r => r.text());
+    state.channels = parseM3U(text);
+  } catch (e) {
+    console.error('Channel refresh failed', e);
+  }
+}
+
 async function refreshEPGData() {
   try {
     const text = await fetch('/api/xmltv').then(r => r.text());
