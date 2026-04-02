@@ -10,6 +10,7 @@ const state = {
   hls: null,
   streamTimer: null,
   progressTimer: null,
+  miniEpgTimer: null,
 };
 
 // ── Boot ───────────────────────────────────────────────────────────────────
@@ -204,24 +205,25 @@ function updateNowBar(ch) {
   }
 }
 
-// ── Full EPG overlay ───────────────────────────────────────────────────────
-function renderFullEPG() {
-  const container = document.getElementById('epgScrollWrap');
-  const now       = Date.now();
-  const wStart    = now - MINI_PAST_MINS() * 60000;
-  const wEnd      = now + MINI_FUTURE_MINS() * 60000;
-  const chColW    = 130; // matches --ch-col-w
-  const winMins   = MINI_PAST_MINS() + MINI_FUTURE_MINS();
-  // Fluid ppm: fill the container width exactly, like the mini EPG
-  const ppm       = Math.max(4, (container.clientWidth - chColW) / winMins);
-  const timelineW = winMins * ppm;
+// ── EPG ────────────────────────────────────────────────────────────────────
+const MINI_PAST_MINS   = () => state.config?.guide?.pastMinutes   ?? 30;
+const MINI_FUTURE_MINS = () => state.config?.guide?.futureMinutes ?? 90;
+const MINI_WIN_MINS    = () => MINI_PAST_MINS() + MINI_FUTURE_MINS();
+
+// Shared table builder — called by both renderMiniEPG and renderFullEPG
+function renderEPG(container, channels, opts) {
+  const { wStart, wEnd, ppm, timelineW, chColW,
+          tableClass, timeRowClass, timeCellClass,
+          chRowClass, progsCellClass, nowLineClass, onSelect } = opts;
+  const now = Date.now();
 
   const table = document.createElement('table');
-  table.className = 'full-epg-table';
+  table.className = tableClass;
 
   // Time header
   const thead   = document.createElement('thead');
   const timeRow = document.createElement('tr');
+  if (timeRowClass) timeRow.className = timeRowClass;
 
   const thCorner = document.createElement('th');
   thCorner.className = 'epg-ch-col';
@@ -229,9 +231,8 @@ function renderFullEPG() {
   timeRow.appendChild(thCorner);
 
   const thTime = document.createElement('th');
-  thTime.className = 'full-time-cell';
+  thTime.className = timeCellClass;
   thTime.style.cssText = `width:${timelineW}px;min-width:${timelineW}px;`;
-
   const firstTick = Math.ceil(wStart / (30 * 60000)) * 30 * 60000;
   for (let t = firstTick; t <= wEnd; t += 30 * 60000) {
     const tick = document.createElement('div');
@@ -246,11 +247,11 @@ function renderFullEPG() {
 
   // Channel rows
   const tbody = document.createElement('tbody');
-  state.channels.forEach(ch => {
+  channels.forEach(ch => {
     const tr = document.createElement('tr');
-    tr.className = 'full-ch-row';
+    tr.className = chRowClass;
     if (ch.id === state.currentChannelId) tr.classList.add('active');
-    tr.addEventListener('click', () => { selectChannel(ch); closeFullEPG(); });
+    tr.addEventListener('click', () => onSelect(ch));
 
     const tdLabel = document.createElement('td');
     tdLabel.className = 'epg-ch-col';
@@ -262,11 +263,10 @@ function renderFullEPG() {
     tr.appendChild(tdLabel);
 
     const tdProgs = document.createElement('td');
-    tdProgs.className = 'full-progs-cell';
+    tdProgs.className = progsCellClass;
     tdProgs.style.cssText = `width:${timelineW}px;min-width:${timelineW}px;`;
 
     const progs = (state.programmes[ch.id] ?? []).filter(p => p.stop > wStart && p.start < wEnd);
-
     if (!progs.length) {
       const nd = document.createElement('div');
       nd.className = 'mini-no-data';
@@ -292,7 +292,7 @@ function renderFullEPG() {
           `<div class="mini-prog-title">${esc(prog.title)}</div>` +
           (widthPx > 80 ? `<div class="mini-prog-time">${fmtTime(prog.start)}–${fmtTime(prog.stop)}</div>` : '');
 
-        block.addEventListener('click', e => { e.stopPropagation(); selectChannel(ch); closeFullEPG(); });
+        block.addEventListener('click', e => { e.stopPropagation(); onSelect(ch); });
         tdProgs.appendChild(block);
       });
     }
@@ -304,7 +304,7 @@ function renderFullEPG() {
 
   // Now-line
   const nowLine = document.createElement('div');
-  nowLine.className = 'full-now-line';
+  nowLine.className = nowLineClass;
   nowLine.style.left = (chColW + MINI_PAST_MINS() * ppm) + 'px';
 
   container.innerHTML = '';
@@ -312,11 +312,63 @@ function renderFullEPG() {
   container.appendChild(nowLine);
 }
 
+function renderMiniEPG() {
+  const container = document.getElementById('miniEpgBar');
+  const now       = Date.now();
+  const wStart    = now - MINI_PAST_MINS() * 60000;
+  const wEnd      = now + MINI_FUTURE_MINS() * 60000;
+  const chColW    = 130;
+  const totalW    = container.clientWidth || (window.innerWidth - 320);
+  const timelineW = totalW - chColW;
+  const ppm       = timelineW / MINI_WIN_MINS();
+
+  const idx = state.channels.findIndex(c => c.id === state.currentChannelId);
+  let start = Math.max(0, idx - 1);
+  if (start + 3 > state.channels.length) start = Math.max(0, state.channels.length - 3);
+
+  renderEPG(container, state.channels.slice(start, start + 3), {
+    wStart, wEnd, ppm, timelineW, chColW,
+    tableClass:    'mini-epg-table',
+    timeRowClass:  'mini-time-row',
+    timeCellClass: 'mini-time-cell',
+    chRowClass:    'mini-ch-row',
+    progsCellClass:'mini-progs-cell',
+    nowLineClass:  'mini-now-line',
+    onSelect: ch => selectChannel(ch),
+  });
+
+  if (!state.miniEpgTimer) {
+    state.miniEpgTimer = setInterval(renderMiniEPG, 60000);
+  }
+}
+
+function renderFullEPG() {
+  const container = document.getElementById('epgScrollWrap');
+  const now       = Date.now();
+  const wStart    = now - MINI_PAST_MINS() * 60000;
+  const wEnd      = now + MINI_FUTURE_MINS() * 60000;
+  const chColW    = 130;
+  const winMins   = MINI_PAST_MINS() + MINI_FUTURE_MINS();
+  const ppm       = Math.max(4, (container.clientWidth - chColW) / winMins);
+  const timelineW = winMins * ppm;
+
+  renderEPG(container, state.channels, {
+    wStart, wEnd, ppm, timelineW, chColW,
+    tableClass:    'full-epg-table',
+    timeRowClass:  null,
+    timeCellClass: 'full-time-cell',
+    chRowClass:    'full-ch-row',
+    progsCellClass:'full-progs-cell',
+    nowLineClass:  'full-now-line',
+    onSelect: ch => { selectChannel(ch); closeFullEPG(); },
+  });
+}
+
 function openFullEPG() {
   const overlay = document.getElementById('epgOverlay');
-  overlay.removeAttribute('hidden');
+  overlay.classList.add('open');
   lucide.createIcons({ nodes: [overlay] });
-  renderFullEPG(); // called after unhide so container.clientWidth is correct
+  renderFullEPG();
   requestAnimationFrame(() => {
     const wrap = document.getElementById('epgScrollWrap');
     const activeRow = wrap.querySelector('.full-ch-row.active');
@@ -325,134 +377,7 @@ function openFullEPG() {
 }
 
 function closeFullEPG() {
-  document.getElementById('epgOverlay').setAttribute('hidden', '');
-}
-
-// ── Mini EPG ───────────────────────────────────────────────────────────────
-const MINI_PAST_MINS   = () => state.config?.guide?.pastMinutes   ?? 30;
-const MINI_FUTURE_MINS = () => state.config?.guide?.futureMinutes ?? 90;
-const MINI_WIN_MINS    = () => MINI_PAST_MINS() + MINI_FUTURE_MINS();
-
-function renderMiniEPG() {
-  const container = document.getElementById('miniEpgBar');
-  const now       = Date.now();
-  const wStart    = now - MINI_PAST_MINS() * 60000;
-  const wEnd      = now + MINI_FUTURE_MINS() * 60000;
-
-  // Pick 3 channels: current ± neighbours
-  const idx = state.channels.findIndex(c => c.id === state.currentChannelId);
-  let start = Math.max(0, idx - 1);
-  if (start + 3 > state.channels.length) start = Math.max(0, state.channels.length - 3);
-  const visible = state.channels.slice(start, start + 3);
-
-  // Calculate pxPerMin to fill available width
-  const chColW    = 130; // matches --ch-col-w
-  const totalW    = container.clientWidth || (window.innerWidth - 320); // fallback
-  const timelineW = totalW - chColW;
-  const ppm       = timelineW / MINI_WIN_MINS();
-
-  // Build table
-  const table = document.createElement('table');
-  table.className = 'mini-epg-table';
-
-  // Time header
-  const thead = document.createElement('thead');
-  const timeRow = document.createElement('tr');
-  timeRow.className = 'mini-time-row';
-
-  const thLabel = document.createElement('th');
-  thLabel.className = 'epg-ch-col';
-  timeRow.appendChild(thLabel);
-
-  const thTime = document.createElement('th');
-  thTime.className = 'mini-time-cell';
-  thTime.style.cssText = `width:${timelineW}px;min-width:${timelineW}px;`;
-
-  // Tick every 30 min
-  const firstTick = Math.ceil(wStart / (30 * 60000)) * 30 * 60000;
-  for (let t = firstTick; t <= wEnd; t += 30 * 60000) {
-    const tick = document.createElement('div');
-    tick.className = 'mini-tick';
-    tick.style.left = ((t - wStart) / 60000 * ppm) + 'px';
-    tick.innerHTML = `<span class="mini-tick-label">${fmtTime(t)}</span>`;
-    thTime.appendChild(tick);
-  }
-  timeRow.appendChild(thTime);
-  thead.appendChild(timeRow);
-  table.appendChild(thead);
-
-  // Channel rows
-  const tbody = document.createElement('tbody');
-
-  visible.forEach(ch => {
-    const tr = document.createElement('tr');
-    tr.className = 'mini-ch-row';
-    tr.dataset.channelId = ch.id;
-    if (ch.id === state.currentChannelId) tr.classList.add('active');
-    tr.addEventListener('click', () => selectChannel(ch));
-
-    // Channel label
-    const tdLabel = document.createElement('td');
-    tdLabel.className = 'epg-ch-col';
-    tdLabel.innerHTML = `<div class="mini-ch-inner"><span class="ch-num">${ch.number}</span><span class="ch-name">${esc(ch.name)}</span></div>`;
-    tr.appendChild(tdLabel);
-
-    // Programmes
-    const tdProgs = document.createElement('td');
-    tdProgs.className = 'mini-progs-cell';
-
-    const progs = (state.programmes[ch.id] ?? []).filter(p => p.stop > wStart && p.start < wEnd);
-
-    if (!progs.length) {
-      const nd = document.createElement('div');
-      nd.className = 'mini-no-data';
-      nd.style.cssText = `left:2px;width:${timelineW - 4}px;`;
-      nd.innerHTML = '<span>No EPG data</span>';
-      tdProgs.appendChild(nd);
-    } else {
-      progs.forEach(prog => {
-        const cs = Math.max(prog.start.getTime(), wStart);
-        const ce = Math.min(prog.stop.getTime(),  wEnd);
-        const leftPx  = (cs - wStart) / 60000 * ppm;
-        const widthPx = Math.max(2, (ce - cs) / 60000 * ppm - 2);
-
-        const block = document.createElement('div');
-        block.className = 'mini-prog';
-        if (prog.start <= now && prog.stop > now) block.classList.add('now');
-        else if (prog.stop <= now)                block.classList.add('past');
-        else                                      block.classList.add('future');
-
-        block.style.cssText = `left:${leftPx}px;width:${widthPx}px;`;
-        block.title = `${prog.title} · ${fmtTime(prog.start)}–${fmtTime(prog.stop)}`;
-
-        block.innerHTML =
-          `<div class="mini-prog-title">${esc(prog.title)}</div>` +
-          (widthPx > 80 ? `<div class="mini-prog-time">${fmtTime(prog.start)}–${fmtTime(prog.stop)}</div>` : '');
-
-        block.addEventListener('click', e => { e.stopPropagation(); selectChannel(ch); });
-        tdProgs.appendChild(block);
-      });
-    }
-
-    tr.appendChild(tdProgs);
-    tbody.appendChild(tr);
-  });
-
-  table.appendChild(tbody);
-
-  // Now line
-  const nowLine = document.createElement('div');
-  nowLine.className = 'mini-now-line';
-  nowLine.style.left = (chColW + MINI_PAST_MINS() * ppm) + 'px';
-
-  container.innerHTML = '';
-  container.appendChild(table);
-  container.appendChild(nowLine);
-
-  // Update now line every minute
-  if (!window._miniEpgTimer) {
-    window._miniEpgTimer = setInterval(renderMiniEPG, 60000);
-  }
+  document.getElementById('epgOverlay').classList.remove('open');
 }
 
 // ── Clocks ─────────────────────────────────────────────────────────────────
@@ -648,7 +573,7 @@ function initVolume() {
 // ── Keyboard navigation ────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (!state.channels.length) return;
-  const epgOpen = !document.getElementById('epgOverlay').hasAttribute('hidden');
+  const epgOpen = document.getElementById('epgOverlay').classList.contains('open');
   const idx = state.channels.findIndex(c => c.id === state.currentChannelId);
   if (e.key === 'ArrowUp') {
     if (epgOpen) return;
