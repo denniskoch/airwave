@@ -10,7 +10,6 @@ const state = {
   hls: null,
   streamTimer: null,
   progressTimer: null,
-  miniEpgTimer: null,
 };
 
 // ── Boot ───────────────────────────────────────────────────────────────────
@@ -29,6 +28,7 @@ async function init() {
     state.programmes = parseXMLTV(xmltvText);
 
     initVolume();
+    renderGuide();
     if (state.channels.length) selectChannel(state.channels[0]);
 
     document.getElementById('epgBtn').addEventListener('click', openFullEPG);
@@ -46,6 +46,7 @@ async function init() {
     setInterval(refreshEPGData,    5 * 60 * 1000);
     setInterval(refreshChannels,   5 * 60 * 1000);
     setInterval(loadAllRSS,        5 * 60 * 1000);
+    setInterval(renderGuide,       60 * 1000);      // keep now-line current
   } catch (e) {
     console.error('Init failed', e);
   }
@@ -141,7 +142,7 @@ function selectChannel(ch) {
   clearInterval(state.progressTimer);
   state.progressTimer = setInterval(() => updateNowBar(ch), 15000);
 
-  renderMiniEPG();
+  updateGuideActiveRow();
 }
 
 // ── Video playback ─────────────────────────────────────────────────────────
@@ -250,6 +251,7 @@ function renderEPG(container, channels, opts) {
   channels.forEach(ch => {
     const tr = document.createElement('tr');
     tr.className = chRowClass;
+    tr.dataset.channelId = ch.id;
     if (ch.id === state.currentChannelId) tr.classList.add('active');
     tr.addEventListener('click', () => onSelect(ch));
 
@@ -300,6 +302,17 @@ function renderEPG(container, channels, opts) {
     tr.appendChild(tdProgs);
     tbody.appendChild(tr);
   });
+  // Always trail with at least 2 blank rows; pad to a minimum of 18 rows total
+  const minRows    = 18;
+  const trailRows  = 2;
+  const spacerCount = Math.max(trailRows, minRows - channels.length);
+  for (let i = 0; i < spacerCount; i++) {
+    const tr = document.createElement('tr');
+    tr.className = chRowClass + ' epg-spacer-row';
+    tr.innerHTML = '<td class="epg-ch-col"></td><td></td>';
+    tbody.appendChild(tr);
+  }
+
   table.appendChild(tbody);
 
   // Now-line
@@ -312,47 +325,18 @@ function renderEPG(container, channels, opts) {
   container.appendChild(nowLine);
 }
 
-function renderMiniEPG() {
-  const container = document.getElementById('miniEpgBar');
-  const now       = Date.now();
-  const wStart    = now - MINI_PAST_MINS() * 60000;
-  const wEnd      = now + MINI_FUTURE_MINS() * 60000;
-  const chColW    = 130;
-  const totalW    = container.clientWidth || (window.innerWidth - 320);
-  const timelineW = totalW - chColW;
-  const ppm       = timelineW / MINI_WIN_MINS();
-
-  const idx = state.channels.findIndex(c => c.id === state.currentChannelId);
-  let start = Math.max(0, idx - 1);
-  if (start + 3 > state.channels.length) start = Math.max(0, state.channels.length - 3);
-
-  renderEPG(container, state.channels.slice(start, start + 3), {
-    wStart, wEnd, ppm, timelineW, chColW,
-    tableClass:    'mini-epg-table',
-    timeRowClass:  'mini-time-row',
-    timeCellClass: 'mini-time-cell',
-    chRowClass:    'mini-ch-row',
-    progsCellClass:'mini-progs-cell',
-    nowLineClass:  'mini-now-line',
-    onSelect: ch => selectChannel(ch),
-  });
-
-  if (!state.miniEpgTimer) {
-    state.miniEpgTimer = setInterval(renderMiniEPG, 60000);
-  }
-}
-
-function renderFullEPG() {
-  const container = document.getElementById('epgScrollWrap');
-  const now       = Date.now();
-  const wStart    = now - MINI_PAST_MINS() * 60000;
-  const wEnd      = now + MINI_FUTURE_MINS() * 60000;
-  const chColW    = 130;
-  const winMins   = MINI_PAST_MINS() + MINI_FUTURE_MINS();
-  const ppm       = Math.max(4, (container.clientWidth - chColW) / winMins);
+// Render all channels into the single EPG panel
+function renderGuide() {
+  const wrap    = document.getElementById('epgScrollWrap');
+  const chColW  = 130;
+  const totalW  = wrap.clientWidth || window.innerWidth;
+  const wStart  = Date.now() - MINI_PAST_MINS() * 60000;
+  const wEnd    = Date.now() + MINI_FUTURE_MINS() * 60000;
+  const winMins = MINI_WIN_MINS();
+  const ppm     = Math.max(4, (totalW - chColW) / winMins);
   const timelineW = winMins * ppm;
 
-  renderEPG(container, state.channels, {
+  renderEPG(wrap, state.channels, {
     wStart, wEnd, ppm, timelineW, chColW,
     tableClass:    'full-epg-table',
     timeRowClass:  null,
@@ -362,22 +346,40 @@ function renderFullEPG() {
     nowLineClass:  'full-now-line',
     onSelect: ch => { selectChannel(ch); closeFullEPG(); },
   });
+  // Callers are responsible for positioning scroll after render
+}
+
+// Fast path: just toggle active class and reposition scroll
+function updateGuideActiveRow() {
+  const wrap = document.getElementById('epgScrollWrap');
+  wrap.querySelectorAll('.full-ch-row').forEach(tr => {
+    tr.classList.toggle('active', tr.dataset.channelId === state.currentChannelId);
+  });
+  // also update ch-name colour (driven by .active on the row)
+  scrollGuideToActive();
+}
+
+function scrollGuideToActive(targetHeight) {
+  const wrap      = document.getElementById('epgScrollWrap');
+  const activeRow = wrap.querySelector('.full-ch-row.active');
+  if (!activeRow) return;
+  const h = targetHeight ?? wrap.clientHeight;
+  wrap.scrollTop = Math.max(0, activeRow.offsetTop - h / 2 + activeRow.offsetHeight / 2);
 }
 
 function openFullEPG() {
-  const overlay = document.getElementById('epgOverlay');
-  overlay.classList.add('open');
-  lucide.createIcons({ nodes: [overlay] });
-  renderFullEPG();
-  requestAnimationFrame(() => {
-    const wrap = document.getElementById('epgScrollWrap');
-    const activeRow = wrap.querySelector('.full-ch-row.active');
-    if (activeRow) wrap.scrollTop = Math.max(0, activeRow.offsetTop - wrap.clientHeight / 2);
-  });
+  const panel = document.getElementById('epgPanel');
+  panel.classList.add('open');
+  renderGuide();
+  // Wait for the expand transition to finish, then centre the active row
+  panel.addEventListener('transitionend', () => scrollGuideToActive(), { once: true });
 }
 
 function closeFullEPG() {
-  document.getElementById('epgOverlay').classList.remove('open');
+  const panel = document.getElementById('epgPanel');
+  panel.classList.remove('open');
+  // Wait for the collapse transition to finish, then snap mini strip to active channel
+  panel.addEventListener('transitionend', () => scrollGuideToActive(210), { once: true });
 }
 
 // ── Clocks ─────────────────────────────────────────────────────────────────
@@ -478,7 +480,7 @@ async function refreshEPGData() {
   try {
     const text = await fetch('/api/xmltv').then(r => r.text());
     state.programmes = parseXMLTV(text);
-    renderMiniEPG();
+    renderGuide();
     const ch = state.channels.find(c => c.id === state.currentChannelId);
     if (ch) updateNowBar(ch);
   } catch (e) {
@@ -573,7 +575,7 @@ function initVolume() {
 // ── Keyboard navigation ────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (!state.channels.length) return;
-  const epgOpen = document.getElementById('epgOverlay').classList.contains('open');
+  const epgOpen = document.getElementById('epgPanel').classList.contains('open');
   const idx = state.channels.findIndex(c => c.id === state.currentChannelId);
   if (e.key === 'ArrowUp') {
     if (epgOpen) return;

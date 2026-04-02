@@ -84,6 +84,7 @@ html, body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding-bottom: var(--mini-epg-h); /* reserve space for fixed EPG panel */
 }
 
 /* ── Upper row ── */
@@ -360,50 +361,36 @@ html, body {
 }
 .news-item-title:hover { color: var(--text); }
 
-/* ── Mini EPG bar ── */
-.mini-epg-bar {
+/* ── EPG panel (mini strip at bottom, expands to full guide) ── */
+.epg-panel {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
   height: var(--mini-epg-h);
-  flex-shrink: 0;
-  border-top: 1px solid var(--border);
-  overflow: hidden;
   background: var(--bg);
-  position: relative;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.epg-panel.open {
+  height: calc(100vh - var(--header-h));
 }
 
-.mini-epg-table {
-  border-collapse: collapse;
-  width: 100%;
-  table-layout: fixed;
-}
-
-/* sticky channel name col */
-.mini-epg-table .epg-ch-col {
-  position: sticky;
-  left: 0;
-  z-index: 3;
-  background: var(--surface);
-  width: var(--ch-col-w);
-  min-width: var(--ch-col-w);
-  border-right: 1px solid var(--border);
-  vertical-align: middle;
-}
-
-/* time header */
-.mini-time-row .epg-ch-col {
-  height: 26px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  padding-left: 10px;
-}
-
-.mini-time-cell {
-  position: relative;
-  height: 26px;
+.epg-panel-header {
+  height: 0;
+  flex-shrink: 0;
+  overflow: hidden;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  transition: height 0.2s ease;
+}
+.epg-panel.open .epg-panel-header {
+  height: var(--header-h);
 }
 
 .mini-tick {
@@ -420,24 +407,6 @@ html, body {
   white-space: nowrap;
 }
 
-/* channel rows */
-.mini-ch-row {
-  height: var(--row-h);
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-}
-.mini-ch-row:hover .epg-ch-col { background: var(--surface2); }
-.mini-ch-row.active .epg-ch-col {
-  background: var(--surface2);
-}
-.mini-ch-row.active .epg-ch-col::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 3px;
-  background: var(--accent);
-}
-
 .mini-ch-inner {
   display: flex;
   align-items: center;
@@ -447,15 +416,6 @@ html, body {
 }
 .ch-num { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent); min-width: 20px; text-align: right; }
 .ch-name { font-size: 14px; font-weight: 500; color: var(--text-dim); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.mini-ch-row.active .ch-name { color: var(--text); }
-
-/* programme cells */
-.mini-progs-cell {
-  position: relative;
-  height: var(--row-h);
-  padding: 0;
-  overflow: hidden;
-}
 
 .mini-prog {
   position: absolute;
@@ -487,17 +447,6 @@ html, body {
   display: flex; align-items: center; padding: 0 8px;
 }
 .mini-no-data span { font-size: 10px; color: var(--text-muted); font-style: italic; }
-
-/* now line */
-.mini-now-line {
-  position: absolute; top: 0; bottom: 0; width: 2px;
-  background: var(--red); z-index: 4; pointer-events: none;
-  box-shadow: 0 0 6px var(--red);
-}
-.mini-now-line::before {
-  content: ''; position: absolute; top: 0; left: -4px;
-  width: 10px; height: 10px; background: var(--red); border-radius: 50%;
-}
 
 /* ── Scrollbar styling ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -546,33 +495,7 @@ html, body {
 .epg-btn:hover { background: var(--surface3); color: var(--text); border-color: var(--accent); }
 .epg-btn svg { width: 13px; height: 13px; }
 
-/* ── Full EPG overlay ── */
-.epg-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  background: var(--bg);
-  display: flex;
-  flex-direction: column;
-  transform: translateY(100%);
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: none;
-}
-.epg-overlay.open {
-  transform: translateY(0);
-  pointer-events: auto;
-}
-
-.epg-overlay-header {
-  height: var(--header-h);
-  flex-shrink: 0;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  gap: 12px;
-}
+/* ── EPG scroll wrapper ── */
 .epg-overlay-title {
   flex: 1;
   display: flex;
@@ -600,12 +523,19 @@ html, body {
 .epg-close-btn:hover { background: var(--surface2); color: var(--text); }
 .epg-close-btn svg { width: 18px; height: 18px; }
 
-/* ── EPG scroll wrapper (single container for both axes) ── */
+/* ── EPG scroll wrapper ── */
 .epg-scroll-wrap {
   flex: 1;
   overflow: auto;
   min-height: 0;
   position: relative;
+}
+/* Hide scrollbar in mini mode — overflow stays auto so scrollTop is never reset */
+.epg-panel:not(.open) .epg-scroll-wrap {
+  scrollbar-width: none;
+}
+.epg-panel:not(.open) .epg-scroll-wrap::-webkit-scrollbar {
+  display: none;
 }
 
 /* ── Full EPG table ── */
@@ -653,7 +583,9 @@ html, body {
   border-bottom: 1px solid var(--border);
   cursor: pointer;
 }
-.full-ch-row:hover .epg-ch-col { background: var(--surface2); }
+.full-ch-row:not(.epg-spacer-row):hover .epg-ch-col { background: var(--surface2); }
+.epg-spacer-row { cursor: default; pointer-events: none; }
+.epg-spacer-row td { height: var(--row-h); border-bottom: 1px solid var(--border); }
 .full-ch-row.active .epg-ch-col { background: var(--surface2); }
 .full-ch-row.active .epg-ch-col::before {
   content: '';
