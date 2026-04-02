@@ -46,7 +46,8 @@ async function init() {
     setInterval(refreshEPGData,    5 * 60 * 1000);
     setInterval(refreshChannels,   5 * 60 * 1000);
     setInterval(loadAllRSS,        5 * 60 * 1000);
-    setInterval(renderGuide,       60 * 1000);      // keep now-line current
+    setInterval(tickEPG,           60 * 1000);      // reclassify now/past/future blocks
+    // renderGuide is called by refreshEPGData every 5 min — that's sufficient for position drift
   } catch (e) {
     console.error('Init failed', e);
   }
@@ -284,6 +285,8 @@ function renderEPG(container, channels, opts) {
 
         const block = document.createElement('div');
         block.className = 'mini-prog';
+        block.dataset.start = prog.start.getTime();
+        block.dataset.stop  = prog.stop.getTime();
         if (prog.start <= now && prog.stop > now) block.classList.add('now');
         else if (prog.stop <= now)                block.classList.add('past');
         else                                      block.classList.add('future');
@@ -347,6 +350,20 @@ function renderGuide() {
     onSelect: ch => { selectChannel(ch); closeFullEPG(); },
   });
   // Callers are responsible for positioning scroll after render
+}
+
+// Cheap 60s tick — only reclassify now/past/future, no DOM rebuild
+function tickEPG() {
+  const now = Date.now();
+  document.getElementById('epgScrollWrap')
+    .querySelectorAll('.mini-prog')
+    .forEach(el => {
+      const start = +el.dataset.start;
+      const stop  = +el.dataset.stop;
+      el.classList.toggle('now',    start <= now && stop > now);
+      el.classList.toggle('past',   stop  <= now);
+      el.classList.toggle('future', start >  now);
+    });
 }
 
 // Fast path: just toggle active class and reposition scroll
@@ -480,11 +497,12 @@ async function refreshEPGData() {
   try {
     const text = await fetch('/api/xmltv').then(r => r.text());
     state.programmes = parseXMLTV(text);
-    renderGuide();
     const ch = state.channels.find(c => c.id === state.currentChannelId);
     if (ch) updateNowBar(ch);
   } catch (e) {
     console.error('EPG refresh failed', e);
+  } finally {
+    renderGuide(); // always reposition blocks, whether data updated or not
   }
 }
 
