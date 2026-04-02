@@ -313,8 +313,9 @@ function renderFullEPG() {
 }
 
 function openFullEPG() {
-  document.getElementById('epgOverlay').removeAttribute('hidden');
-  lucide.createIcons();
+  const overlay = document.getElementById('epgOverlay');
+  overlay.removeAttribute('hidden');
+  lucide.createIcons({ nodes: [overlay] });
   renderFullEPG(); // called after unhide so container.clientWidth is correct
   requestAnimationFrame(() => {
     const wrap = document.getElementById('epgScrollWrap');
@@ -614,7 +615,7 @@ function initVolume() {
                : video.volume < 0.5               ? 'volume-1'
                :                                    'volume-2';
     icon.setAttribute('data-lucide', name);
-    lucide.createIcons();
+    lucide.createIcons({ nodes: [muteBtn] });
   }
 
   slider.addEventListener('input', () => {
