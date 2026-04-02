@@ -9,6 +9,8 @@ const state = {
   currentChannelId: null,
   hls: null,
   streamTimer: null,
+  retryTimer: null,    // HLS reconnect backoff timer
+  retryCount: 0,
   progressTimer: null,
 };
 
@@ -147,15 +149,60 @@ function selectChannel(ch) {
 }
 
 // ── Video playback ─────────────────────────────────────────────────────────
+const MAX_RETRIES  = 6;
+const RETRY_BASE   = 2000;   // ms — doubles each attempt, caps at 30s
+
 function playStream(url) {
   const video = document.getElementById('videoPlayer');
+
+  // Cancel any pending retry from the previous stream
+  clearTimeout(state.retryTimer);
+  state.retryTimer = null;
+  state.retryCount = 0;
+
   if (state.hls) { state.hls.destroy(); state.hls = null; }
 
   if (Hls.isSupported()) {
     const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
     state.hls = hls;
-    hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); showLoading(false); stopStatic(); });
-    hls.on(Hls.Events.ERROR, (_, data) => { if (data.fatal) showLoading(true); });
+
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      state.retryCount = 0;   // connected — reset backoff
+      video.play().catch(() => {});
+      showLoading(false);
+      stopStatic();
+    });
+
+    hls.on(Hls.Events.ERROR, (_, data) => {
+      if (!data.fatal) return;
+      showLoading(true);
+
+      if (state.retryCount >= MAX_RETRIES) {
+        console.warn('HLS: max retries reached, giving up');
+        return;
+      }
+
+      const delay = Math.min(RETRY_BASE * Math.pow(2, state.retryCount), 30000);
+      state.retryCount++;
+      console.warn(`HLS fatal (${data.type}), retry ${state.retryCount}/${MAX_RETRIES} in ${delay}ms`);
+
+      state.retryTimer = setTimeout(() => {
+        // Guard: user may have switched channels while we were waiting
+        if (state.hls !== hls) return;
+
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+          hls.startLoad();
+        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+          hls.recoverMediaError();
+        } else {
+          // Unknown fatal — full reload
+          hls.destroy();
+          state.hls = null;
+          playStream(url);
+        }
+      }, delay);
+    });
+
     hls.loadSource(url);
     hls.attachMedia(video);
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
