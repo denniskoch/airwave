@@ -20,6 +20,7 @@ async function init() {
     state.config = await fetch('/api/config').then(r => r.json());
     renderClockShells();
     startClocks();
+    renderEPGSkeleton();  // fill the strip immediately while data loads
 
     const [m3uText, xmltvText] = await Promise.all([
       fetch('/api/channels').then(r => r.text()),
@@ -373,6 +374,33 @@ function renderEPG(container, channels, opts) {
   container.innerHTML = '';
   container.appendChild(table);
   container.appendChild(nowLine);
+}
+
+// Skeleton shown on first paint while data is loading
+function renderEPGSkeleton() {
+  const wrap = document.getElementById('epgScrollWrap');
+  // Vary block widths across rows so it reads like real programme data
+  const patterns = [
+    [140, 220, 160, 180],
+    [200, 120, 240, 100],
+    [160, 180, 200, 140],
+    [120, 260, 140, 200],
+    [180, 140, 220, 160],
+  ];
+  const rows = Array.from({ length: 18 }, (_, i) => {
+    const delay = (i * 80) % 1400;
+    const progs = patterns[i % patterns.length].map(w =>
+      `<div class="epg-skel-block epg-skel-prog" style="width:${w}px;animation-delay:${delay}ms"></div>`
+    ).join('');
+    return `<div class="epg-skel-row">
+      <div class="epg-skel-ch">
+        <div class="epg-skel-block epg-skel-ch-num"  style="animation-delay:${delay}ms"></div>
+        <div class="epg-skel-block epg-skel-ch-name" style="animation-delay:${delay}ms"></div>
+      </div>
+      <div class="epg-skel-progs">${progs}</div>
+    </div>`;
+  }).join('');
+  wrap.innerHTML = `<div class="epg-skel">${rows}</div>`;
 }
 
 // Render all channels into the single EPG panel

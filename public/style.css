@@ -622,3 +622,48 @@ html, body {
   background: var(--red);
   border-radius: 50%;
 }
+
+/* ── EPG loading skeleton ── */
+@keyframes epg-shimmer {
+  from { background-position: -600px 0; }
+  to   { background-position:  600px 0; }
+}
+.epg-skel-row {
+  display: flex;
+  align-items: center;
+  height: var(--row-h);
+  border-bottom: 1px solid var(--border);
+  padding-right: 12px;
+}
+.epg-skel-block {
+  background: linear-gradient(90deg,
+    var(--surface2) 0%,
+    var(--surface3) 50%,
+    var(--surface2) 100%
+  );
+  background-size: 600px 100%;
+  animation: epg-shimmer 1.4s ease-in-out infinite;
+  border-radius: 3px;
+}
+.epg-skel-ch {
+  width: var(--ch-col-w);
+  min-width: var(--ch-col-w);
+  padding: 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.epg-skel-ch-num  { width: 26px; height: 10px; }
+.epg-skel-ch-name { width: 74px; height: 13px; }
+.epg-skel-progs {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+}
+.epg-skel-prog {
+  height: calc(var(--row-h) - 14px);
+  flex-shrink: 0;
+}
